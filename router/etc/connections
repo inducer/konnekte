@@ -1,0 +1,10 @@
+CONNECTION abt
+name=Arcor Basis Tag
+number=012345
+description=Tagsueber billig, nachts teuer
+END
+CONNECTION abn
+name=Arcor Basis Nacht
+number=012345
+description=Nachts billig, tagsueber teuer
+END
