@@ -154,7 +154,7 @@
                                 <cstring>Duration</cstring>
                             </property>
                             <property name="text">
-                                <string>Since</string>
+                                <string>Duration</string>
                             </property>
                         </widget>
                         <widget class="QLayoutWidget" row="0" column="1">
