@@ -98,6 +98,7 @@ class SystrayIcon(qt.QLabel):
             XSendEvent(dpy, managerWin, 0, 0, c.addressof(ev))
             XSync(dpy, 0)
         
+        self.show()
         self.setPixmap(icon)
         self.setAlignment(qt.Qt.AlignHCenter)
 

@@ -45,6 +45,12 @@ ok()
   exit 0
 }
 
+log()
+{
+  DATE="`date +%s` <`date -R`>"
+  echo "$DATE $@" >> $LOGFILE
+}
+
 is_connected()
 {
   #cat /proc/net/dev/ | grep ppp > /dev/null
@@ -53,12 +59,14 @@ is_connected()
 
 phys_connect()
 {
+  log PHYS_CONNECT cnx:$FORM_connection
   echo $FORM_connection > $CONNECTIONFILE
   date +%s > $STARTTIMEFILE
 }
 
 phys_disconnect()
 {
+  log PHYS_DISCONNECT
   rm $CONNECTIONFILE
   rm $HOLDERSFILE
   rm $STARTTIMEFILE
@@ -66,6 +74,7 @@ phys_disconnect()
 
 connect()
 {
+  log CONNECT cnx:$FORM_connection station:$FORM_station
   echo $FORM_station >> $HOLDERSFILE
   if ! is_connected; then
     phys_connect
@@ -74,15 +83,17 @@ connect()
 
 disconnect()
 { 
+  log DISCONNECT station:$FORM_station
   grep -v $FORM_station $HOLDERSFILE >> $HOLDERSFILE-$$
   mv $HOLDERSFILE-$$ $HOLDERSFILE
-  if test "`wc -c $HOLDERSFILE|cut -f1 -d' '`" = "0"; then
+  if test -z `cat $HOLDERSFILE`; then
     phys_disconnect
   fi
 }
 
 force_disconnect()
 {
+  log FORCE_DISCONNECT station:$FORM_station
   phys_disconnect
 }
 
@@ -109,10 +120,14 @@ case "$FORM_mode" in
     echo
     cat $CONNECTIONSFILE
     ;;
-  connections )
+  log )
     verify_auth<$AUTHFILE || auth_failed
     echo
     cat $LOGFILE
+    echo -----------------------------------
+    echo -n For reference, the time right now is:
+    date -R
+    date +%s
     ;;
   connect )
     verify_auth<$AUTHFILE || auth_failed

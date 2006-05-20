@@ -219,8 +219,13 @@ class MainWindow(MainWindowBase):
         self.connect(self.actionShowHide,
                 qt.SIGNAL("activated()"), self.toggle_show)
 
+        self.actionDisconnect = qt.QAction("&Disconnect", qt.QKeySequence(), self)
+        self.connect(self.actionDisconnect,
+                qt.SIGNAL("activated()"), self.do_disconnect)
+
         self.PopupMenu = qt.QPopupMenu()
         self.actionShowHide.addTo(self.PopupMenu)
+        self.actionDisconnect.addTo(self.PopupMenu)
         self.actionQuit.addTo(self.PopupMenu)
 
         self.toggle_show()
@@ -232,6 +237,8 @@ class MainWindow(MainWindowBase):
         self.connect(self.btnDisconnect, qt.SIGNAL("clicked()"), self.do_disconnect)
         self.connect(self.btnViewLog, qt.SIGNAL("clicked()"), self.view_log)
 
+        self.connect(self.actionAbout, qt.SIGNAL("activated()"), self.about)
+
         self.State = None
         self.update_state()
 
@@ -242,14 +249,14 @@ class MainWindow(MainWindowBase):
 
     def load_icons(self):
         icon_image = qt.QImage("images/main.png")
-        off_icon_image = qt.QImage("images/main-off.png")
         small_icon_image = icon_image.smoothScale(22, 22, 
                 qt.QImage.ScaleMin)
-        small_off_icon_image = off_icon_image.smoothScale(22, 22, 
-                qt.QImage.ScaleMin)
-
         self.Icon = qt.QPixmap(icon_image)
         self.SmallIcon = qt.QPixmap(small_icon_image)
+
+        off_icon_image = qt.QImage("images/main-off.png")
+        small_off_icon_image = off_icon_image.smoothScale(22, 22, 
+                qt.QImage.ScaleMin)
         self.OffIcon = qt.QPixmap(off_icon_image)
         self.SmallOffIcon = qt.QPixmap(small_off_icon_image)
 
@@ -269,18 +276,15 @@ class MainWindow(MainWindowBase):
 
     def set_state(self, state):
         if self.State is None or self.State.Code != state.Code:
-            if state.Code == UIState.DISABLED:
-                self.btnConnect.setEnabled(False)
-                self.btnDisconnect.setEnabled(False)
-                self.TrayIcon.setPixmap(self.SmallOffIcon)
-            elif state.Code == UIState.DISCONNECTED:
-                self.btnConnect.setEnabled(True)
-                self.btnDisconnect.setEnabled(False)
-                self.TrayIcon.setPixmap(self.SmallOffIcon)
-            elif state.Code == UIState.CONNECTED:
-                self.btnConnect.setEnabled(False)
-                self.btnDisconnect.setEnabled(True)
+            if state.Code == UIState.CONNECTED:
                 self.TrayIcon.setPixmap(self.SmallIcon)
+            else:
+                self.TrayIcon.setPixmap(self.SmallOffIcon)
+            self.TrayIcon.update()
+
+            self.btnConnect.setEnabled(state.Code == UIState.DISCONNECTED)
+            self.btnDisconnect.setEnabled(state.Code == UIState.CONNECTED)
+            self.actionDisconnect.setEnabled(state.Code == UIState.CONNECTED)
 
             self.editStation.setEnabled(state.Code != UIState.CONNECTED)
             self.editPassword.setEnabled(state.Code != UIState.CONNECTED)
@@ -314,7 +318,7 @@ class MainWindow(MainWindowBase):
 
         self.State = state
 
-    def update_state(self):
+    def update_state_once(self):
         try:
             if not self.Manager.is_right_version():
                 self.set_state(UIState(UIState.DISABLED, 
@@ -326,6 +330,8 @@ class MainWindow(MainWindowBase):
         except ConnectionError, e:
             self.set_state(UIState(UIState.DISABLED, str(e)))
 
+    def update_state(self):
+        self.update_state_once()
         qt.QTimer.singleShot(1000, self.update_state)
 
     def do_connect(self):
@@ -347,6 +353,7 @@ class MainWindow(MainWindowBase):
         if cw.exec_loop() == qt.QDialog.Accepted:
             self.Manager.connect(conn_names[cw.comboConnection.currentItem()])
             # FIXME errors?
+            self.update_state_once()
 
     def do_disconnect(self):
         holders = self.State.HeldBy[:]
@@ -357,9 +364,11 @@ class MainWindow(MainWindowBase):
                     qt.QMessageBox.Yes,
                     qt.QMessageBox.No) == qt.QMessageBox.Yes:
                 self.Manager.force_disconnect()
+                self.update_state_once()
                 # FIXME errors?
         else:
             self.Manager.disconnect()
+            self.update_state_once()
             # FIXME errors?
 
     def view_log(self):
@@ -376,6 +385,12 @@ class MainWindow(MainWindowBase):
         if not self.Manager.is_right_version():
             return self.tr(u"The gateway uses an incompatible protocol.")
 
+    def about(self):
+        qt.QMessageBox.information(self,
+                "Konnekte",
+                self.tr("Konnekte (C) Andreas Kloeckner 2006"),
+                qt.QMessageBox.Ok)
+        
     def closeEvent(self, ev):
         if self.State.Code == UIState.CONNECTED and \
                 self.Manager.station in self.State.HeldBy:
