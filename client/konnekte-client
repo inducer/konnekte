@@ -4,6 +4,7 @@ import qt
 from ui_mainwindow import *
 import sys
 import systray
+import re 
 
 SETTINGS = qt.QSettings()
 
@@ -35,11 +36,17 @@ class ConnectionManager(object):
         self.Station = station
         self.Password = password
 
+        self.Connections = None
+
+    def _station(self):
+        return self.Station
+    station = property(_station)
+
     def set_credentials(self, station, password):
         self.Station = station
         self.Password = password
 
-    def request(self, op, parameters={}):
+    def request(self, op, **parameters):
         import httplib
         import urlparse
         import re
@@ -61,9 +68,10 @@ class ConnectionManager(object):
 
         try:
             conn = httplib.HTTPConnection(netloc, 80)
-            conn.request("GET", path + "?" + 
+            request = path + "?" + \
                     "&".join(["%s=%s" % (key,value) 
-                        for key,value in my_par.iteritems()]))
+                        for key,value in my_par.iteritems()])
+            conn.request("GET", request)
             response = conn.getresponse()
             result = response.read()
         except socket.error, err:
@@ -109,7 +117,60 @@ class ConnectionManager(object):
             return False
 
     def get_state(self):
-        self.request("version")
+        s_text = self.request("state")
+        s_lines = s_text.split("\n")
+        vars = {}
+        for line in s_lines:
+            match = re.match("^([a-z]+)\: (.*)$", line)
+            if match:
+                vars[match.group(1)] = match.group(2)
+
+        if not "state" in vars:
+            raise ValueError, "Invalid state: no state variable"
+
+        if vars["state"] == "connected":
+            return UIState(UIState.CONNECTED,
+                    connection=vars["connection"],
+                    duration=int(vars["now"])-int(vars["start"]),
+                    heldby=vars["holders"].split())
+        elif vars["state"] == "disconnected":
+            return UIState(UIState.DISCONNECTED)
+        else:
+            raise ValueError, "Invalid state: invalid state variable"
+
+    def get_connections(self):
+        c_text = self.request("connections")
+        c_lines = c_text.split("\n")
+        connections = {}
+        for line in c_lines:
+            match = re.match("^([a-z]+)\:([a-z]+)=(.*)$", line)
+            if match:
+                cnx = match.group(1)
+                if cnx in connections:
+                    connections[cnx][match.group(2)] = match.group(3)
+                else:
+                    connections[cnx] = {match.group(2): match.group(3)}
+
+        return connections
+
+    def _cached_connections(self):
+        if self.Connections is None:
+            self.Connections = self.get_connections()
+            
+        return self.Connections
+    cached_connections = property(_cached_connections)
+
+    def connect(self, connection):
+        self.request("connect", connection=connection)
+
+    def disconnect(self):
+        self.request("disconnect")
+
+    def force_disconnect(self):
+        self.request("force_disconnect")
+
+    def get_log(self):
+        return self.request("log")
 
 class UIState(object):
     DISABLED = 1
@@ -167,6 +228,10 @@ class MainWindow(MainWindowBase):
         self.connect(self.editStation, qt.SIGNAL("textChanged(const QString &)"), self.update_credentials)
         self.connect(self.editPassword, qt.SIGNAL("textChanged(const QString &)"), self.update_credentials)
 
+        self.connect(self.btnConnect, qt.SIGNAL("clicked()"), self.do_connect)
+        self.connect(self.btnDisconnect, qt.SIGNAL("clicked()"), self.do_disconnect)
+        self.connect(self.btnViewLog, qt.SIGNAL("clicked()"), self.view_log)
+
         self.State = None
         self.update_state()
 
@@ -207,12 +272,15 @@ class MainWindow(MainWindowBase):
             if state.Code == UIState.DISABLED:
                 self.btnConnect.setEnabled(False)
                 self.btnDisconnect.setEnabled(False)
+                self.TrayIcon.setPixmap(self.SmallOffIcon)
             elif state.Code == UIState.DISCONNECTED:
                 self.btnConnect.setEnabled(True)
                 self.btnDisconnect.setEnabled(False)
+                self.TrayIcon.setPixmap(self.SmallOffIcon)
             elif state.Code == UIState.CONNECTED:
                 self.btnConnect.setEnabled(False)
                 self.btnDisconnect.setEnabled(True)
+                self.TrayIcon.setPixmap(self.SmallIcon)
 
             self.editStation.setEnabled(state.Code != UIState.CONNECTED)
             self.editPassword.setEnabled(state.Code != UIState.CONNECTED)
@@ -231,37 +299,74 @@ class MainWindow(MainWindowBase):
                 return self.tr("%1 seconds").arg(second_count)
             elif 60 <= second_count < 119:
                 return self.tr("1 minute %1 seconds").arg(second_count-60)
-            elif 60 <= second_count < 119:
-                return self.tr("%1 minute %2 seconds")\
+            else:
+                return self.tr("%1 minutes %2 seconds")\
                         .arg(second_count/60)\
                         .arg(second_count%60)
 
+        def format_connection(conn_id):
+            return self.Manager.cached_connections[conn_id]["name"]
+
         examine_and_change("text", self.lblState)
-        examine_and_change("Connection", self.lblConnection)
+        examine_and_change("Connection", self.lblConnection, format_connection)
         examine_and_change("Duration", self.lblDuration, format_duration)
-        examine_and_change("HeldBy", self.lblStation)
+        examine_and_change("HeldBy", self.lblStation, lambda x: ", ".join(x))
 
         self.State = state
 
     def update_state(self):
         try:
-            if not self.Manager.is_valid():
-                self.set_state(UIState(UIState.DISABLED, 
-                    self.tr("No gateway found")))
-            elif not self.Manager.is_authenticated():
-                self.set_state(UIState(UIState.DISABLED, 
-                    self.tr("Incorrect credentials")))
-            elif not self.Manager.is_right_version():
+            if not self.Manager.is_right_version():
                 self.set_state(UIState(UIState.DISABLED, 
                     self.tr("Incorrect version of gateway")))
             else:
-                self.set_state(UIState(UIState.DISCONNECTED))
+                self.set_state(self.Manager.get_state())
         except RequestError, e:
             self.set_state(UIState(UIState.DISABLED, str(e)))
         except ConnectionError, e:
             self.set_state(UIState(UIState.DISABLED, str(e)))
 
         qt.QTimer.singleShot(1000, self.update_state)
+
+    def do_connect(self):
+        connections = self.Manager.get_connections()
+        conn_names = list(connections.keys())
+
+        from ui_connectwindow import ConnectWindow
+
+        cw = ConnectWindow(self)
+        for name in conn_names:
+            cw.comboConnection.insertItem(connections[name]["name"])
+
+        def show_description(index):
+            cw.lblDescription.setText(connections[conn_names[index]]["description"])
+
+        self.connect(cw.comboConnection, qt.SIGNAL("highlighted(int)"), 
+                show_description)
+        show_description(cw.comboConnection.currentItem())
+        if cw.exec_loop() == qt.QDialog.Accepted:
+            self.Manager.connect(conn_names[cw.comboConnection.currentItem()])
+            # FIXME errors?
+
+    def do_disconnect(self):
+        holders = self.State.HeldBy[:]
+        if holders != [self.Manager.station]:
+            if qt.QMessageBox.information(self,
+                    "Konnekte",
+                    self.tr("Other stations are connected at present. Force disconnection?"),
+                    qt.QMessageBox.Yes,
+                    qt.QMessageBox.No) == qt.QMessageBox.Yes:
+                self.Manager.force_disconnect()
+                # FIXME errors?
+        else:
+            self.Manager.disconnect()
+            # FIXME errors?
+
+    def view_log(self):
+        from ui_logwindow import LogWindow
+        lw = LogWindow(self)
+        lw.textLog.setText(self.Manager.get_log())
+        lw.exec_loop()
 
     def diagnose_failure(self):
         if not self.Manager.is_valid():
@@ -272,10 +377,11 @@ class MainWindow(MainWindowBase):
             return self.tr(u"The gateway uses an incompatible protocol.")
 
     def closeEvent(self, ev):
-        if self.State.Code == UIState.CONNECTED:
+        if self.State.Code == UIState.CONNECTED and \
+                self.Manager.station in self.State.HeldBy:
             qt.QMessageBox.information(self,
-                    "konnekte",
-                    self.tr("Cannot quit because there is still an active connection."),
+                    "Konnekte",
+                    self.tr("Cannot quit because there is still an active connection held."),
                     qt.QMessageBox.Ok)
             return
 

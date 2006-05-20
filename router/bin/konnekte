@@ -11,6 +11,7 @@ CONNECTIONFILE=$STATEDIR/konnekte-connection
 HOLDERSFILE=$STATEDIR/konnekte-holders
 STARTTIMEFILE=$STATEDIR/konnekte-connstarttime
 AUTHFILE=$CONFIGDIR/credentials
+LOGFILE=$LOGDIR/log
 
 verify_auth()
 {
@@ -66,17 +67,16 @@ phys_disconnect()
 connect()
 {
   echo $FORM_station >> $HOLDERSFILE
-  if is_connected; then
-    return 0
+  if ! is_connected; then
+    phys_connect
   fi
-  
 }
 
 disconnect()
-{
-  grep -v $FORM_station >> $HOLDERSFILE-$$
+{ 
+  grep -v $FORM_station $HOLDERSFILE >> $HOLDERSFILE-$$
   mv $HOLDERSFILE-$$ $HOLDERSFILE
-  if test "`wc -c $HOLDERSFILE`" = "0"; then
+  if test "`wc -c $HOLDERSFILE|cut -f1 -d' '`" = "0"; then
     phys_disconnect
   fi
 }
@@ -96,6 +96,7 @@ case "$FORM_mode" in
     echo
     if is_connected; then
       echo "state: connected"
+      echo "connection: `cat $CONNECTIONFILE`"
       echo "holders: `cat $HOLDERSFILE`"
       echo "start: `cat $STARTTIMEFILE`"
       echo "now: `date +%s`"
@@ -108,9 +109,13 @@ case "$FORM_mode" in
     echo
     cat $CONNECTIONSFILE
     ;;
-  connect )
+  connections )
     verify_auth<$AUTHFILE || auth_failed
     echo
+    cat $LOGFILE
+    ;;
+  connect )
+    verify_auth<$AUTHFILE || auth_failed
     connect || failed
     ok
     ;;

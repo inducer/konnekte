@@ -19,53 +19,9 @@
         <property name="name">
             <cstring>unnamed</cstring>
         </property>
-        <widget class="QListView">
-            <column>
-                <property name="text">
-                    <string>Start time</string>
-                </property>
-                <property name="clickable">
-                    <bool>true</bool>
-                </property>
-                <property name="resizable">
-                    <bool>true</bool>
-                </property>
-            </column>
-            <column>
-                <property name="text">
-                    <string>Duration</string>
-                </property>
-                <property name="clickable">
-                    <bool>true</bool>
-                </property>
-                <property name="resizable">
-                    <bool>true</bool>
-                </property>
-            </column>
-            <column>
-                <property name="text">
-                    <string>Connection</string>
-                </property>
-                <property name="clickable">
-                    <bool>true</bool>
-                </property>
-                <property name="resizable">
-                    <bool>true</bool>
-                </property>
-            </column>
-            <column>
-                <property name="text">
-                    <string>Initiating station</string>
-                </property>
-                <property name="clickable">
-                    <bool>true</bool>
-                </property>
-                <property name="resizable">
-                    <bool>true</bool>
-                </property>
-            </column>
+        <widget class="QTextBrowser">
             <property name="name">
-                <cstring>listLog</cstring>
+                <cstring>textLog</cstring>
             </property>
         </widget>
         <widget class="QLayoutWidget">
