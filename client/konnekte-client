@@ -56,11 +56,14 @@ class ConnectionManager(object):
 
         my_par = parameters.copy()
         my_par["auth"] = md5.new(self.Station+":"+self.Password).hexdigest()
-        print my_par["auth"]
+        my_par["mode"] = op
+        my_par["station"] = self.Station
 
         try:
             conn = httplib.HTTPConnection(netloc, 80)
-            conn.request("GET", path)
+            conn.request("GET", path + "?" + 
+                    "&".join(["%s=%s" % (key,value) 
+                        for key,value in my_par.iteritems()]))
             response = conn.getresponse()
             result = response.read()
         except socket.error, err:
@@ -242,7 +245,17 @@ class MainWindow(MainWindowBase):
 
     def update_state(self):
         try:
-            state = self.Manager.get_state()
+            if not self.Manager.is_valid():
+                self.set_state(UIState(UIState.DISABLED, 
+                    self.tr("No gateway found")))
+            elif not self.Manager.is_authenticated():
+                self.set_state(UIState(UIState.DISABLED, 
+                    self.tr("Incorrect credentials")))
+            elif not self.Manager.is_right_version():
+                self.set_state(UIState(UIState.DISABLED, 
+                    self.tr("Incorrect version of gateway")))
+            else:
+                self.set_state(UIState(UIState.DISCONNECTED))
         except RequestError, e:
             self.set_state(UIState(UIState.DISABLED, str(e)))
         except ConnectionError, e:

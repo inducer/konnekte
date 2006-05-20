@@ -4,13 +4,18 @@ Content-type: text/plain
 
 PROTOVERSION=1
 CONFIGDIR=../etc
-STATEDIR=../var
+LOGDIR=../var
+STATEDIR=/tmp
+CONNECTIONSFILE=$CONFIGDIR/connections
+CONNECTIONFILE=$STATEDIR/konnekte-connection
+HOLDERSFILE=$STATEDIR/konnekte-holders
+STARTTIMEFILE=$STATEDIR/konnekte-connstarttime
 AUTHFILE=$CONFIGDIR/credentials
 
 verify_auth()
 {
   while read NAME PASSWORD; do
-    MD5=$(echo -n "$NAME:$PASSWORD" | md5sum)
+    MD5=$(echo -n "$NAME:$PASSWORD" | md5sum | cut -f1 -d" ")
     if test "$FORM_auth" = "$MD5"; then
       return 0
     fi
@@ -25,20 +30,99 @@ auth_failed()
   exit 0
 }
 
+failed()
+{
+  echo "X-Konnekte-Status: 500 Server Error"
+  echo
+  exit 0
+}
+
+ok()
+{
+  echo "X-Konnekte-Status: 200 OK"
+  echo
+  exit 0
+}
+
+is_connected()
+{
+  #cat /proc/net/dev/ | grep ppp > /dev/null
+  test -f $CONNECTIONFILE
+}
+
+phys_connect()
+{
+  echo $FORM_connection > $CONNECTIONFILE
+  date +%s > $STARTTIMEFILE
+}
+
+phys_disconnect()
+{
+  rm $CONNECTIONFILE
+  rm $HOLDERSFILE
+  rm $STARTTIMEFILE
+}
+
+connect()
+{
+  echo $FORM_station >> $HOLDERSFILE
+  if is_connected; then
+    return 0
+  fi
+  
+}
+
+disconnect()
+{
+  grep -v $FORM_station >> $HOLDERSFILE-$$
+  mv $HOLDERSFILE-$$ $HOLDERSFILE
+  if test "`wc -c $HOLDERSFILE`" = "0"; then
+    phys_disconnect
+  fi
+}
+
+force_disconnect()
+{
+  phys_disconnect
+}
+
 case "$FORM_mode" in
   hello )
     echo
-    echo olleh konnekte
+    echo -n "olleh konnekte"
     ;;
   state )
     verify_auth<$AUTHFILE || auth_failed
     echo
-    echo state
+    if is_connected; then
+      echo "state: connected"
+      echo "holders: `cat $HOLDERSFILE`"
+      echo "start: `cat $STARTTIMEFILE`"
+      echo "now: `date +%s`"
+    else
+      echo "state: disconnected"
+    fi
     ;;
   connections )
     verify_auth<$AUTHFILE || auth_failed
     echo
-    echo connections
+    cat $CONNECTIONSFILE
+    ;;
+  connect )
+    verify_auth<$AUTHFILE || auth_failed
+    echo
+    connect || failed
+    ok
+    ;;
+  disconnect )
+    verify_auth<$AUTHFILE || auth_failed
+    disconnect || failed
+    ok
+    ;;
+  force_disconnect )
+    verify_auth<$AUTHFILE || auth_failed
+    force_disconnect || failed
+    ok
     ;;
   version )
     verify_auth<$AUTHFILE || auth_failed
