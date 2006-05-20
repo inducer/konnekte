@@ -1,0 +1,281 @@
+#! /usr/bin/env python
+
+import qt
+from ui_mainwindow import *
+import sys
+import systray
+
+SETTINGS = qt.QSettings()
+
+class ConnectionError(Exception):
+    def __init__(self, reason):
+        self.Reason = str(reason)
+
+    def __str__(self):
+        return self.Reason
+
+class RequestError(Exception):
+    def __init__(self, status, reason):
+        self.Status = status
+        self.Reason = reason
+
+    def __str__(self):
+        return "Request failed: %d %s" % (\
+            self.Status, self.Reason)
+
+    def status(self):
+        return self.Status
+
+    def reason(self):
+        return self.Reason
+
+class ConnectionManager(object):
+    def __init__(self, base_url, station, password):
+        self.BaseURL = base_url
+        self.Station = station
+        self.Password = password
+
+    def set_credentials(self, station, password):
+        self.Station = station
+        self.Password = password
+
+    def request(self, op, parameters={}):
+        import httplib
+        import urlparse
+        import re
+        import md5
+        import socket
+
+        scheme, netloc, path, query, fragment = urlparse.urlsplit(str(self.BaseURL))
+        host_port_match = re.match("([a-zA-Z0-9\.]+)(\:[0-9]+)?", netloc)
+        if host_port_match.group(2) is None:
+            port = httplib.HTTP_PORT
+        else:
+            port = int(host_port_match.group(2))
+        host = host_port_match.group(1)
+
+        my_par = parameters.copy()
+        my_par["auth"] = md5.new(self.Station+":"+self.Password).hexdigest()
+        print my_par["auth"]
+
+        try:
+            conn = httplib.HTTPConnection(netloc, 80)
+            conn.request("GET", path)
+            response = conn.getresponse()
+            result = response.read()
+        except socket.error, err:
+            raise ConnectionError, str(err)
+        status_code = response.status
+        reason = response.reason
+
+        status_header = response.getheader("X-Konnekte-Status")
+        if status_header is not None:
+            status_code = int(status_header[:3])
+            reason = status_header[4:]
+
+        if status_code != 200:
+            raise RequestError, (status_code, reason)
+        return result
+
+    def is_valid(self):
+        try:
+            return self.request("hello") == "olleh konnekte"
+        except ConnectionError:
+            return False
+        except RequestError:
+            return False
+
+    def is_authenticated(self):
+        try:
+            self.request("state")
+            return True
+        except ConnectionError:
+            return False
+        except RequestError:
+            return False
+
+    def is_right_version(self):
+        try:
+            prot_ver = int(self.request("version"))
+            return prot_ver == 1
+        except ValueError:
+            return False
+        except ConnectionError:
+            return False
+        except RequestError:
+            return False
+
+    def get_state(self):
+        self.request("version")
+
+class UIState(object):
+    DISABLED = 1
+    DISCONNECTED = 2
+    CONNECTED = 3
+
+    def __init__(self, code, textual=None, connection=None, duration=None, heldby=None):
+        self.Code = code
+        self.Textual = textual
+        self.Connection = connection
+        self.Duration = duration
+        self.HeldBy = heldby
+
+    def _text(self):
+        if self.Textual is not None:
+            return self.Textual
+        else:
+            return {UIState.DISABLED: app.translate("states", "Error"),
+                    UIState.DISCONNECTED: app.translate("states", "Disconnected"),
+                    UIState.CONNECTED: app.translate("states", "Connected")}[self.Code]
+    text = property(_text)
+
+class MainWindow(MainWindowBase):
+    def __init__(self):
+        MainWindowBase.__init__(self)
+
+        base_url = str(SETTINGS.readEntry("/konnekte/base_url", "http://sprite/cgi-bin/konnekte")[0])
+        station = str(SETTINGS.readEntry("/konnekte/station")[0])
+        password = str(SETTINGS.readEntry("/konnekte/password")[0])
+        self.editStation.setText(station)
+        self.editPassword.setText(password)
+
+        self.Manager = ConnectionManager(base_url, station, password)
+
+        self.load_icons()
+        self.setIcon(self.Icon)
+
+        self.TrayIcon = systray.SystrayIcon(self.SmallOffIcon, self)
+        self.connect(self.TrayIcon, qt.PYSIGNAL("activated()"), 
+                self.toggle_show)
+        self.connect(self.TrayIcon, 
+                qt.PYSIGNAL("contextMenuRequested(const QPoint &)"), 
+                self.tray_rightclick)
+
+        self.actionShowHide = qt.QAction("DOESNOTMATTER", qt.QKeySequence(), self)
+        self.connect(self.actionShowHide,
+                qt.SIGNAL("activated()"), self.toggle_show)
+
+        self.PopupMenu = qt.QPopupMenu()
+        self.actionShowHide.addTo(self.PopupMenu)
+        self.actionQuit.addTo(self.PopupMenu)
+
+        self.toggle_show()
+
+        self.connect(self.editStation, qt.SIGNAL("textChanged(const QString &)"), self.update_credentials)
+        self.connect(self.editPassword, qt.SIGNAL("textChanged(const QString &)"), self.update_credentials)
+
+        self.State = None
+        self.update_state()
+
+    def update_credentials(self, dummy):
+        station = str(self.editStation.text())
+        password = str(self.editPassword.text())
+        self.Manager.set_credentials(station, password)
+
+    def load_icons(self):
+        icon_image = qt.QImage("images/main.png")
+        off_icon_image = qt.QImage("images/main-off.png")
+        small_icon_image = icon_image.smoothScale(22, 22, 
+                qt.QImage.ScaleMin)
+        small_off_icon_image = off_icon_image.smoothScale(22, 22, 
+                qt.QImage.ScaleMin)
+
+        self.Icon = qt.QPixmap(icon_image)
+        self.SmallIcon = qt.QPixmap(small_icon_image)
+        self.OffIcon = qt.QPixmap(off_icon_image)
+        self.SmallOffIcon = qt.QPixmap(small_off_icon_image)
+
+    def toggle_show(self):
+        if self.isHidden():
+            self.show()
+            self.raiseW()
+            self.actionShowHide.setMenuText(self.tr("&Hide Main Window"))
+            self.actionShowHide.setText(self.tr("Hide main window"))
+        else:
+            self.hide()
+            self.actionShowHide.setMenuText(self.tr("&Show Main Window"))
+            self.actionShowHide.setText(self.tr("Show main window"))
+
+    def tray_rightclick(self, pos):
+        self.PopupMenu.popup(pos)
+
+    def set_state(self, state):
+        if self.State is None or self.State.Code != state.Code:
+            if state.Code == UIState.DISABLED:
+                self.btnConnect.setEnabled(False)
+                self.btnDisconnect.setEnabled(False)
+            elif state.Code == UIState.DISCONNECTED:
+                self.btnConnect.setEnabled(True)
+                self.btnDisconnect.setEnabled(False)
+            elif state.Code == UIState.CONNECTED:
+                self.btnConnect.setEnabled(False)
+                self.btnDisconnect.setEnabled(True)
+
+            self.editStation.setEnabled(state.Code != UIState.CONNECTED)
+            self.editPassword.setEnabled(state.Code != UIState.CONNECTED)
+
+        def examine_and_change(attrname, widget, format_func=lambda x: x):
+            if self.State is None or getattr(state, attrname) != getattr(self.State, attrname):
+                if getattr(state, attrname) is None:
+                    widget.setText("-/-")
+                else:
+                    widget.setText(format_func(getattr(state, attrname)))
+
+        def format_duration(second_count):
+            if second_count == 1:
+                return self.tr("1 second")
+            elif second_count in [0]+range(2,60):
+                return self.tr("%1 seconds").arg(second_count)
+            elif 60 <= second_count < 119:
+                return self.tr("1 minute %1 seconds").arg(second_count-60)
+            elif 60 <= second_count < 119:
+                return self.tr("%1 minute %2 seconds")\
+                        .arg(second_count/60)\
+                        .arg(second_count%60)
+
+        examine_and_change("text", self.lblState)
+        examine_and_change("Connection", self.lblConnection)
+        examine_and_change("Duration", self.lblDuration, format_duration)
+        examine_and_change("HeldBy", self.lblStation)
+
+        self.State = state
+
+    def update_state(self):
+        try:
+            state = self.Manager.get_state()
+        except RequestError, e:
+            self.set_state(UIState(UIState.DISABLED, str(e)))
+        except ConnectionError, e:
+            self.set_state(UIState(UIState.DISABLED, str(e)))
+
+        qt.QTimer.singleShot(1000, self.update_state)
+
+    def diagnose_failure(self):
+        if not self.Manager.is_valid():
+            return self.tr(u"There was some trouble connecting to the gateway.")
+        if not self.Manager.is_authenticated():
+            return self.tr(u"The gateway did not accept the station/password combination.")
+        if not self.Manager.is_right_version():
+            return self.tr(u"The gateway uses an incompatible protocol.")
+
+    def closeEvent(self, ev):
+        if self.State.Code == UIState.CONNECTED:
+            qt.QMessageBox.information(self,
+                    "konnekte",
+                    self.tr("Cannot quit because there is still an active connection."),
+                    qt.QMessageBox.Ok)
+            return
+
+        station = str(self.editStation.text())
+        password = str(self.editPassword.text())
+        SETTINGS.writeEntry("/konnekte/station", station)
+        SETTINGS.writeEntry("/konnekte/password", password)
+        ev.accept()
+
+
+
+
+app = qt.QApplication(sys.argv)
+mw = MainWindow()
+app.setMainWidget(mw)
+app.exec_loop()

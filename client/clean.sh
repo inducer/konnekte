@@ -1,2 +1,2 @@
 #! /bin/sh
-rm ui-*.py
+rm ui_*.py

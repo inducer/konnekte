@@ -1,0 +1,53 @@
+#! /usr/bin/haserl
+Content-type: text/plain
+<?
+
+PROTOVERSION=1
+CONFIGDIR=../etc
+STATEDIR=../var
+AUTHFILE=$CONFIGDIR/credentials
+
+verify_auth()
+{
+  while read NAME PASSWORD; do
+    MD5=$(echo -n "$NAME:$PASSWORD" | md5sum)
+    if test "$FORM_auth" = "$MD5"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+auth_failed()
+{
+  echo "X-Konnekte-Status: 403 Forbidden"
+  echo
+  exit 0
+}
+
+case "$FORM_mode" in
+  hello )
+    echo
+    echo olleh konnekte
+    ;;
+  state )
+    verify_auth<$AUTHFILE || auth_failed
+    echo
+    echo state
+    ;;
+  connections )
+    verify_auth<$AUTHFILE || auth_failed
+    echo
+    echo connections
+    ;;
+  version )
+    verify_auth<$AUTHFILE || auth_failed
+    echo
+    echo 1
+    ;;
+  * )
+    echo "X-Konnekte-Status: 400 Bad Request"
+    echo
+    ;;
+esac
+?>
