@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 
 import qt
-from ui_mainwindow import *
+from ui_mainwindow import MainWindowBase
+from ui_connectprogresswindow import ConnectProgressWindowBase
 import sys
 import systray
 import re 
@@ -156,6 +157,9 @@ class ConnectionManager(object):
         else:
             raise ValueError, "Invalid state: invalid state variable"
 
+    def is_connected(self):
+        return self.get_state().Code == UIState.CONNECTED
+
     def get_connections(self):
         c_text = self.request("connections")
         c_lines = c_text.split("\n")
@@ -250,6 +254,47 @@ class UIState(object):
                     UIState.DISCONNECTED: app.translate("states", "Disconnected"),
                     UIState.CONNECTED: app.translate("states", "Connected")}[self.Code]
     text = property(_text)
+
+class ConnectProgressWindow(ConnectProgressWindowBase):
+    def __init__(self, parent, manager):
+        ConnectProgressWindowBase.__init__(self, parent)
+        self.Manager = manager
+        self.Log = ""
+        qt.QTimer.singleShot(1000, self.update)
+
+    def update_once(self):
+        if self.Manager.is_connected():
+            self.close()
+            return
+
+        self.progress.setProgress(self.progress.progress()+10)
+
+        new_log = self.Manager.get_connect_log()
+        if new_log != self.Log:
+            self.textLog.setUpdatesEnabled(False)
+            self.textLog.setText(new_log)
+            self.textLog.scrollToBottom()
+            self.textLog.setUpdatesEnabled(True)
+            self.textLog.update()
+            self.Log = new_log
+            if "DONE" in new_log:
+                qt.QMessageBox.warning(self,
+                        "Konnekte",
+                        self.tr("The connection failed. See the log for why."),
+                        qt.QMessageBox.Ok)
+                self.close()
+                return
+
+    def update(self):
+        try:
+            self.update_once()
+        finally:
+            qt.QTimer.singleShot(1000, self.update)
+
+    def exec_loop(self):
+        ConnectProgressWindowBase.exec_loop(self)
+        if not self.Manager.is_connected():
+            self.Manager.disconnect()
 
 class MainWindow(MainWindowBase):
     def __init__(self):
@@ -404,8 +449,10 @@ class MainWindow(MainWindowBase):
         if cw.exec_loop() == qt.QDialog.Accepted:
             self.Manager.connect(conn_names[cw.comboConnection.currentItem()])
             self.accompany_connect()
-            # FIXME errors?
-            self.update_state_once()
+
+    def accompany_connect(self):
+        cpw = ConnectProgressWindow(self, self.Manager)
+        cpw.exec_loop()
 
     def do_disconnect(self):
         holders = self.State.HeldBy[:]

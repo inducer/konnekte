@@ -51,6 +51,29 @@
     </message>
 </context>
 <context>
+    <name>ConnectProgressWindow</name>
+    <message>
+        <source>The connection failed. See the log for why.</source>
+        <translation>Die Verbindung ist fehlgeschlagen.
+Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
+    </message>
+</context>
+<context>
+    <name>ConnectProgressWindowBase</name>
+    <message>
+        <source>Connection Progress</source>
+        <translation>Verbindungsfortschritt</translation>
+    </message>
+    <message>
+        <source>&amp;Cancel</source>
+        <translation>&amp;Abbrechen</translation>
+    </message>
+    <message>
+        <source>Alt+C</source>
+        <translation>Alt+A</translation>
+    </message>
+</context>
+<context>
     <name>ConnectWindow</name>
     <message>
         <source>Connect</source>
@@ -97,7 +120,7 @@
     </message>
     <message>
         <source>End</source>
-        <translation>Ende</translation>
+        <translation type="obsolete">Ende</translation>
     </message>
     <message>
         <source>Station</source>
@@ -122,6 +145,10 @@
     <message>
         <source>Last &amp;PPP Log</source>
         <translation>Letztes &amp;PPP-Protokoll</translation>
+    </message>
+    <message>
+        <source>Duration</source>
+        <translation>Dauer</translation>
     </message>
 </context>
 <context>
