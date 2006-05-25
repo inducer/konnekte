@@ -201,6 +201,11 @@ class ConnectionManager(object):
                 self.End = end
                 self.Connection = connection
 
+            def __str__(self):
+                return "ConnectionDetail(%s, %s, %s, %s)" % \
+                        (self.Stations, self.Start, self.End,
+                                self.Connection)
+
         lines = self.request("log").split("\n")
         now_line = lines[0]
         lines = lines[1:]
@@ -225,9 +230,10 @@ class ConnectionManager(object):
                 cnxmatch = re.search("cnx:([a-z0-9_]+)", line)
                 curdetail.Connection = cnxmatch.group(1)
             elif what == "PHYS_DISCONNECT":
-                curdetail.End = when
-                connections.append(curdetail)
-                curdetail = ConnectionDetail()
+                if curdetail.Start is not None:
+                    curdetail.End = when
+                    connections.append(curdetail)
+                    curdetail = ConnectionDetail()
 
         return connections
 
@@ -472,19 +478,34 @@ class MainWindow(MainWindowBase):
         from ui_logwindow import LogWindow
         import time
 
+        def lookup_connection(cnx_id):
+            try:
+                return self.Manager.cached_connections[cnx_id]["name"]
+            except KeyError:
+                return str(cnx_id)
+
+        def get_duration_str(start, end):
+            if start is None or end is None:
+                return self.tr("None")
+            return format_duration(end-start)
+
+        def get_time_str(secs):
+            if secs is None:
+                return self.tr("None")
+            else:
+                return time.strftime(
+                        "%Y-%m-%d %H:%M",
+                        time.localtime(cdetail.Start))
+
         lw = LogWindow(self)
         lw.textPPPLog.setText(self.Manager.get_connect_log())
         clog = self.Manager.get_log()
         last = None
         for cdetail in clog:
-            cnx = self.Manager.cached_connections[cdetail.Connection]["name"]
-            time_str = time.strftime(
-                    "%Y-%m-%d %H:%M",
-                    time.localtime(cdetail.Start))
-            columns = [time_str,
-                    format_duration(cdetail.End-cdetail.Start),
+            columns = [get_time_str(cdetail.Start),
+                    get_duration_str(cdetail.Start, cdetail.End),
                     ", ".join(cdetail.Stations),
-                    cnx]
+                    lookup_connection(cdetail.Connection)]
             if last is not None:
                 last = qt.QListViewItem(
                         lw.listConnections, last,

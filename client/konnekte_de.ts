@@ -205,6 +205,10 @@ Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
         <source>&amp;Disconnect</source>
         <translation>&amp;Trennen</translation>
     </message>
+    <message>
+        <source>None</source>
+        <translation>Kein</translation>
+    </message>
 </context>
 <context>
     <name>MainWindowBase</name>
