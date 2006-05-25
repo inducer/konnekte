@@ -10,6 +10,7 @@ import re
 SETTINGS = qt.QSettings()
 
 def format_duration(second_count):
+    second_count = int(second_count)
     if second_count == 1:
         return app.translate("dateformat", 
                 "1 second")
@@ -419,15 +420,11 @@ class MainWindow(MainWindowBase):
 
     def update_state_once(self):
         try:
-            if not self.Manager.is_right_version():
-                self.set_state(UIState(UIState.DISABLED, 
-                    self.tr("Incorrect version of gateway")))
-            else:
-                self.set_state(self.Manager.get_state())
+            self.set_state(self.Manager.get_state())
         except RequestError, e:
-            self.set_state(UIState(UIState.DISABLED, str(e)))
+            self.set_state(UIState(UIState.DISABLED, self.diagnose_failure()))
         except ConnectionError, e:
-            self.set_state(UIState(UIState.DISABLED, str(e)))
+            self.set_state(UIState(UIState.DISABLED, self.diagnose_failure()))
 
     def update_state(self):
         try:
@@ -498,6 +495,7 @@ class MainWindow(MainWindowBase):
                         time.localtime(cdetail.Start))
 
         lw = LogWindow(self)
+        lw.listConnections.setSorting(-1, True)
         lw.textPPPLog.setText(self.Manager.get_connect_log())
         clog = self.Manager.get_log()
         last = None
@@ -513,15 +511,16 @@ class MainWindow(MainWindowBase):
             else:
                 last = qt.QListViewItem(
                         lw.listConnections, *columns)
+
         lw.exec_loop()
 
     def diagnose_failure(self):
         if not self.Manager.is_valid():
-            return self.tr(u"There was some trouble connecting to the gateway.")
+            return self.tr("There was some trouble connecting to the gateway.")
         if not self.Manager.is_authenticated():
-            return self.tr(u"The gateway did not accept the station/password combination.")
+            return self.tr("The gateway did not accept the station/password combination.")
         if not self.Manager.is_right_version():
-            return self.tr(u"The gateway uses an incompatible protocol.")
+            return self.tr("The gateway uses an incompatible protocol.")
 
     def about(self):
         qt.QMessageBox.information(self,

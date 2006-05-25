@@ -187,7 +187,7 @@ Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
     </message>
     <message>
         <source>Incorrect version of gateway</source>
-        <translation>Inkorrekte Gateway-Version</translation>
+        <translation type="obsolete">Inkorrekte Gateway-Version</translation>
     </message>
     <message>
         <source>Other stations are connected at present. Force disconnection?</source>
@@ -208,6 +208,18 @@ Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
     <message>
         <source>None</source>
         <translation>Kein</translation>
+    </message>
+    <message>
+        <source>There was some trouble connecting to the gateway.</source>
+        <translation>Es gab Schwierigkeiten beim Verbinden zum Gateway.</translation>
+    </message>
+    <message>
+        <source>The gateway did not accept the station/password combination.</source>
+        <translation>Das Gateway hat die Kombination aus Station und Passwort nicht akzeptiert.</translation>
+    </message>
+    <message>
+        <source>The gateway uses an incompatible protocol.</source>
+        <translation>Das Gateway benutzt ein inkompatibles Protokoll.</translation>
     </message>
 </context>
 <context>
