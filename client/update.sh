@@ -5,3 +5,4 @@ for i in ui/*.ui; do
 done
 pylupdate konnekte.pro
 lrelease konnekte.pro
+./makedata images/*.png *.qm > binary_data.py

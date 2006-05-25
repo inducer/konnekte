@@ -9,6 +9,10 @@ import re
 
 SETTINGS = qt.QSettings()
 
+def get_file(name):
+    import binary_data
+    return "".join([chr(i) for i in binary_data.get_file(name)])
+
 def format_duration(second_count):
     second_count = int(second_count)
     if second_count == 1:
@@ -358,13 +362,13 @@ class MainWindow(MainWindowBase):
         self.Manager.set_credentials(station, password)
 
     def load_icons(self):
-        icon_image = qt.QImage("images/main.png")
+        icon_image = qt.QImage(qt.QByteArray(get_file("main.png")))
         small_icon_image = icon_image.smoothScale(22, 22, 
                 qt.QImage.ScaleMin)
         self.Icon = qt.QPixmap(icon_image)
         self.SmallIcon = qt.QPixmap(small_icon_image)
 
-        off_icon_image = qt.QImage("images/main-off.png")
+        off_icon_image = qt.QImage(qt.QByteArray(get_file("main-off.png")))
         small_off_icon_image = off_icon_image.smoothScale(22, 22, 
                 qt.QImage.ScaleMin)
         self.OffIcon = qt.QPixmap(off_icon_image)
@@ -550,7 +554,9 @@ class MainWindow(MainWindowBase):
 app = qt.QApplication(sys.argv)
 
 trans = qt.QTranslator(None)
-trans.load(qt.QString("konnekte_%1").arg(qt.QTextCodec.locale()[:2]), ".")
+#trans.load(qt.QString(
+qmfile = get_file("konnekte_%s.qm" % str(qt.QTextCodec.locale()[:2]))
+trans.load(qmfile, len(qmfile))
 app.installTranslator(trans)
 
 mw = MainWindow()
