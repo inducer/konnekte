@@ -8,6 +8,24 @@ import re
 
 SETTINGS = qt.QSettings()
 
+def format_duration(second_count):
+    if second_count == 1:
+        return app.translate("dateformat", 
+                "1 second")
+    elif second_count in [0]+range(2,60):
+        return app.translate("dateformat",
+                "%1 seconds")\
+                .arg(second_count)
+    elif 60 <= second_count < 119:
+        return app.translate("dateformat",
+                "1 minute %1 seconds")\
+                .arg(second_count-60)
+    else:
+        return app.translate("dateformat",
+                "%1 minutes %2 seconds")\
+                .arg(second_count/60)\
+                .arg(second_count%60)
+
 class ConnectionError(Exception):
     def __init__(self, reason):
         self.Reason = str(reason)
@@ -170,7 +188,47 @@ class ConnectionManager(object):
         self.request("force_disconnect")
 
     def get_log(self):
-        return self.request("log")
+        import time
+
+        class ConnectionDetail:
+            def __init__(self, stations=[], start=None, end=None, connection=None):
+                self.Stations = stations[:]
+                self.Start = start
+                self.End = end
+                self.Connection = connection
+
+        lines = self.request("log").split("\n")
+        now_line = lines[0]
+        lines = lines[1:]
+        now = int(now_line.split()[1])
+        real_now = time.time()
+        delta_now = real_now - now
+
+        connections = []
+        curdetail = ConnectionDetail()
+        for line in lines:
+            if not line.strip():
+                continue
+            what = line.split()[1]
+            when = int(line.split()[0]) + delta_now
+
+            if what == "CONNECT":
+                stationmatch = re.search("station:([a-zA-Z0-9_]+)", line)
+                curdetail.Stations.append(stationmatch.group(1))
+                if curdetail.Start is None:
+                    curdetail.Start = when
+            elif what == "PHYS_CONNECT":
+                cnxmatch = re.search("cnx:([a-z0-9_]+)", line)
+                curdetail.Connection = cnxmatch.group(1)
+            elif what == "PHYS_DISCONNECT":
+                curdetail.End = when
+                connections.append(curdetail)
+                curdetail = ConnectionDetail()
+
+        return connections
+
+    def get_connect_log(self):
+        return self.request("connectlog")
 
 class UIState(object):
     DISABLED = 1
@@ -219,7 +277,7 @@ class MainWindow(MainWindowBase):
         self.connect(self.actionShowHide,
                 qt.SIGNAL("activated()"), self.toggle_show)
 
-        self.actionDisconnect = qt.QAction("&Disconnect", qt.QKeySequence(), self)
+        self.actionDisconnect = qt.QAction(self.tr("&Disconnect"), qt.QKeySequence(), self)
         self.connect(self.actionDisconnect,
                 qt.SIGNAL("activated()"), self.do_disconnect)
 
@@ -264,6 +322,8 @@ class MainWindow(MainWindowBase):
         if self.isHidden():
             self.show()
             self.raiseW()
+            if self.isMinimized():
+                self.showNormal()
             self.actionShowHide.setMenuText(self.tr("&Hide Main Window"))
             self.actionShowHide.setText(self.tr("Hide main window"))
         else:
@@ -296,18 +356,6 @@ class MainWindow(MainWindowBase):
                 else:
                     widget.setText(format_func(getattr(state, attrname)))
 
-        def format_duration(second_count):
-            if second_count == 1:
-                return self.tr("1 second")
-            elif second_count in [0]+range(2,60):
-                return self.tr("%1 seconds").arg(second_count)
-            elif 60 <= second_count < 119:
-                return self.tr("1 minute %1 seconds").arg(second_count-60)
-            else:
-                return self.tr("%1 minutes %2 seconds")\
-                        .arg(second_count/60)\
-                        .arg(second_count%60)
-
         def format_connection(conn_id):
             return self.Manager.cached_connections[conn_id]["name"]
 
@@ -331,12 +379,15 @@ class MainWindow(MainWindowBase):
             self.set_state(UIState(UIState.DISABLED, str(e)))
 
     def update_state(self):
-        self.update_state_once()
-        qt.QTimer.singleShot(1000, self.update_state)
+        try:
+            self.update_state_once()
+        finally:
+            qt.QTimer.singleShot(1000, self.update_state)
 
     def do_connect(self):
         connections = self.Manager.get_connections()
         conn_names = list(connections.keys())
+        conn_names.sort()
 
         from ui_connectwindow import ConnectWindow
 
@@ -352,6 +403,7 @@ class MainWindow(MainWindowBase):
         show_description(cw.comboConnection.currentItem())
         if cw.exec_loop() == qt.QDialog.Accepted:
             self.Manager.connect(conn_names[cw.comboConnection.currentItem()])
+            self.accompany_connect()
             # FIXME errors?
             self.update_state_once()
 
@@ -365,16 +417,34 @@ class MainWindow(MainWindowBase):
                     qt.QMessageBox.No) == qt.QMessageBox.Yes:
                 self.Manager.force_disconnect()
                 self.update_state_once()
-                # FIXME errors?
         else:
             self.Manager.disconnect()
             self.update_state_once()
-            # FIXME errors?
 
     def view_log(self):
         from ui_logwindow import LogWindow
+        import time
+
         lw = LogWindow(self)
-        lw.textLog.setText(self.Manager.get_log())
+        lw.textPPPLog.setText(self.Manager.get_connect_log())
+        clog = self.Manager.get_log()
+        last = None
+        for cdetail in clog:
+            cnx = self.Manager.cached_connections[cdetail.Connection]["name"]
+            time_str = time.strftime(
+                    "%Y-%m-%d %H:%M",
+                    time.localtime(cdetail.Start))
+            columns = [time_str,
+                    format_duration(cdetail.End-cdetail.Start),
+                    ", ".join(cdetail.Stations),
+                    cnx]
+            if last is not None:
+                last = qt.QListViewItem(
+                        lw.listConnections, last,
+                        *columns)
+            else:
+                last = qt.QListViewItem(
+                        lw.listConnections, *columns)
         lw.exec_loop()
 
     def diagnose_failure(self):
@@ -410,6 +480,11 @@ class MainWindow(MainWindowBase):
 
 
 app = qt.QApplication(sys.argv)
+
+trans = qt.QTranslator(None)
+trans.load(qt.QString("konnekte_%1").arg(qt.QTextCodec.locale()[:2]), ".")
+app.installTranslator(trans)
+
 mw = MainWindow()
 app.setMainWidget(mw)
 app.exec_loop()

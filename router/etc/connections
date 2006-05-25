@@ -1,4 +1,23 @@
-abt:name=Arcor Basis Tag
+abt:name=Arcor Basis Tag (9-18)
 abt:description=Tagsueber billig, nachts teuer
-abn:name=Arcor Basis Nacht
+abt:number=01920782
+abt:user=arcor
+abt:password=internet
+
+abn:name=Arcor Basis Nacht (18-9)
 abn:description=Nachts billig, tagsueber teuer
+abn:number=01920783
+abn:user=arcor
+abn:password=internet
+
+ast:name=Arcor Spar Tag (9-18) (5.9c/Verb!)
+ast:description=Verbindungsentgelt, tagsueber billig, nachts teuer
+ast:number=01920785
+ast:user=arcor
+ast:password=internet
+
+asn:name=Arcor Spar Nacht (18-9) (5.9c/Verb!)
+asn:description=Verbindungsentgelt, nachts billig, tagsueber teuer
+asn:number=01920786
+asn:user=arcor
+asn:password=internet

@@ -19,6 +19,9 @@
         <property name="name">
             <cstring>unnamed</cstring>
         </property>
+        <property name="spacing">
+            <number>10</number>
+        </property>
         <widget class="QLayoutWidget">
             <property name="name">
                 <cstring>layout11</cstring>
@@ -121,24 +124,15 @@
                             <property name="name">
                                 <cstring>lblStation</cstring>
                             </property>
-                            <property name="text">
-                                <string>textLabel6</string>
-                            </property>
                         </widget>
                         <widget class="QLabel" row="2" column="1">
                             <property name="name">
                                 <cstring>lblDuration</cstring>
                             </property>
-                            <property name="text">
-                                <string>textLabel4</string>
-                            </property>
                         </widget>
                         <widget class="QLabel" row="1" column="1">
                             <property name="name">
                                 <cstring>lblConnection</cstring>
-                            </property>
-                            <property name="text">
-                                <string>textLabel9</string>
                             </property>
                         </widget>
                         <widget class="QLabel" row="1" column="0">
@@ -176,9 +170,6 @@
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                 </sizepolicy>
-                            </property>
-                            <property name="text">
-                                <string>textLabel2</string>
                             </property>
                         </widget>
                     </grid>
@@ -304,9 +295,6 @@
         <slot>close()</slot>
     </connection>
 </connections>
-<includes>
-    <include location="local" impldecl="in implementation">mainwindow.ui.h</include>
-</includes>
 <slots>
     <slot>actionQuit_destroyed( QObject * )</slot>
 </slots>

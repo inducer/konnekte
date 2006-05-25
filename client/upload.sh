@@ -1,7 +1,6 @@
 #! /bin/sh
 DESTMACHINE=sprite
 
-ssh root@$DESTMACHINE "rm -R konnekte"
 ssh root@$DESTMACHINE "mkdir -p konnekte/bin"
 ssh root@$DESTMACHINE "mkdir -p konnekte/etc"
 ssh root@$DESTMACHINE "mkdir -p konnekte/var"

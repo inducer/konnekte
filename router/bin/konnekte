@@ -2,7 +2,6 @@
 Content-type: text/plain
 <?
 
-PROTOVERSION=1
 CONFIGDIR=../etc
 LOGDIR=../var
 STATEDIR=/tmp
@@ -12,6 +11,10 @@ HOLDERSFILE=$STATEDIR/konnekte-holders
 STARTTIMEFILE=$STATEDIR/konnekte-connstarttime
 AUTHFILE=$CONFIGDIR/credentials
 LOGFILE=$LOGDIR/log
+PPP_LOGFILE=/tmp/ppp-log
+CONNECT_SCRIPT=/root/ppp/connect
+
+PROTOVERSION=1
 
 verify_auth()
 {
@@ -47,35 +50,49 @@ ok()
 
 log()
 {
-  DATE="`date +%s` <`date -R`>"
+  DATE="`date +%s`"
   echo "$DATE $@" >> $LOGFILE
+}
+
+get_value()
+{
+  egrep "^$1:$2=" $CONNECTIONSFILE | cut -f2 -d=
 }
 
 is_connected()
 {
-  #cat /proc/net/dev/ | grep ppp > /dev/null
-  test -f $CONNECTIONFILE
+  grep ppp /proc/net/dev > /dev/null
 }
 
 phys_connect()
 {
-  log PHYS_CONNECT cnx:$FORM_connection
-  echo $FORM_connection > $CONNECTIONFILE
+  cnx=$FORM_connection
+  log "PHYS_CONNECT cnx:$FORM_connection"
+  echo "$cnx" > $CONNECTIONFILE
   date +%s > $STARTTIMEFILE
+
+  phone=`get_value "$cnx" number`
+  user=`get_value "$cnx" user`
+  pwd=`get_value "$cnx" password`
+
+  PHONE_NUMBER="$phone" USER="$user" PASSWORD="$pwd" \
+    $CONNECT_SCRIPT > $PPP_LOGFILE 2>&1 &
 }
 
 phys_disconnect()
 {
-  log PHYS_DISCONNECT
-  rm $CONNECTIONFILE
-  rm $HOLDERSFILE
-  rm $STARTTIMEFILE
+  log "PHYS_DISCONNECT station:$FORM_station"
+  rm -f $CONNECTIONFILE
+  rm -f $HOLDERSFILE
+  rm -f $STARTTIMEFILE
+
+  killall pppd
 }
 
 connect()
 {
-  log CONNECT cnx:$FORM_connection station:$FORM_station
-  echo $FORM_station >> $HOLDERSFILE
+  log "CONNECT cnx:$FORM_connection station:$FORM_station"
+  echo "$FORM_station" >> $HOLDERSFILE
   if ! is_connected; then
     phys_connect
   fi
@@ -83,8 +100,8 @@ connect()
 
 disconnect()
 { 
-  log DISCONNECT station:$FORM_station
-  grep -v $FORM_station $HOLDERSFILE >> $HOLDERSFILE-$$
+  log "DISCONNECT station:$FORM_station"
+  grep -v "$FORM_station" $HOLDERSFILE >> $HOLDERSFILE-$$
   mv $HOLDERSFILE-$$ $HOLDERSFILE
   if test -z `cat $HOLDERSFILE`; then
     phys_disconnect
@@ -93,7 +110,7 @@ disconnect()
 
 force_disconnect()
 {
-  log FORCE_DISCONNECT station:$FORM_station
+  log "FORCE_DISCONNECT station:$FORM_station"
   phys_disconnect
 }
 
@@ -105,7 +122,7 @@ case "$FORM_mode" in
   state )
     verify_auth<$AUTHFILE || auth_failed
     echo
-    if is_connected; then
+    if is_connected && test -f $HOLDERSFILE; then
       echo "state: connected"
       echo "connection: `cat $CONNECTIONFILE`"
       echo "holders: `cat $HOLDERSFILE`"
@@ -123,11 +140,14 @@ case "$FORM_mode" in
   log )
     verify_auth<$AUTHFILE || auth_failed
     echo
-    cat $LOGFILE
-    echo -----------------------------------
-    echo -n For reference, the time right now is:
-    date -R
+    echo -n "NOW "
     date +%s
+    cat $LOGFILE
+    ;;
+  connectlog )
+    verify_auth<$AUTHFILE || auth_failed
+    echo
+    cat $PPP_LOGFILE
     ;;
   connect )
     verify_auth<$AUTHFILE || auth_failed
