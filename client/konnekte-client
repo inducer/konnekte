@@ -400,6 +400,7 @@ class MainWindow(MainWindowBase):
 
             self.editStation.setEnabled(state.Code != UIState.CONNECTED)
             self.editPassword.setEnabled(state.Code != UIState.CONNECTED)
+            self.btnViewLog.setEnabled(state.Code != UIState.DISABLED)
 
         def examine_and_change(attrname, widget, format_func=lambda x: x):
             if self.State is None or getattr(state, attrname) != getattr(self.State, attrname):
