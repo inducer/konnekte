@@ -2,8 +2,9 @@
 Content-type: text/plain
 <?
 
-CONFIGDIR=../etc
-LOGDIR=../var
+ROOTDIR=/root/konnekte
+CONFIGDIR=$ROOTDIR/etc
+LOGDIR=$ROOTDIR/var
 STATEDIR=/tmp
 CONNECTIONSFILE=$CONFIGDIR/connections
 CONNECTIONFILE=$STATEDIR/konnekte-connection
@@ -29,21 +30,21 @@ verify_auth()
 
 auth_failed()
 {
-  echo "X-Konnekte-Status: 403 Forbidden"
+  echo "Status: 403 Forbidden"
   echo
   exit 0
 }
 
 failed()
 {
-  echo "X-Konnekte-Status: 500 Server Error"
+  echo "Status: 500 Server Error"
   echo
   exit 0
 }
 
 ok()
 {
-  echo "X-Konnekte-Status: 200 OK"
+  echo "Status: 200 OK"
   echo
   exit 0
 }
@@ -67,6 +68,8 @@ is_connected()
 phys_connect()
 {
   cnx=$FORM_connection
+  get_value "$cnx" number > /dev/null || return 1
+
   log "PHYS_CONNECT cnx:$FORM_connection"
   echo "$cnx" > $CONNECTIONFILE
   date +%s > $STARTTIMEFILE
@@ -75,8 +78,9 @@ phys_connect()
   user=`get_value "$cnx" user`
   pwd=`get_value "$cnx" password`
 
+  rm "$PPP_LOGFILE"
   PHONE_NUMBER="$phone" USER="$user" PASSWORD="$pwd" \
-    $CONNECT_SCRIPT > $PPP_LOGFILE 2>&1 &
+  LOG="$PPP_LOGFILE" $CONNECT_SCRIPT
 }
 
 phys_disconnect()
@@ -91,11 +95,11 @@ phys_disconnect()
 
 connect()
 {
+  if ! is_connected; then
+    phys_connect || return 1
+  fi
   log "CONNECT cnx:$FORM_connection station:$FORM_station"
   echo "$FORM_station" >> $HOLDERSFILE
-  if ! is_connected; then
-    phys_connect
-  fi
 }
 
 disconnect()
@@ -117,7 +121,16 @@ force_disconnect()
 case "$FORM_mode" in
   hello )
     echo
-    echo -n "olleh konnekte"
+    echo "olleh konnekte"
+    echo "-----------------------"
+    echo "WORKING DIRECTORY"
+    echo "-----------------------"
+    pwd
+    echo "-----------------------"
+    echo "ENVIRONMENT"
+    echo "-----------------------"
+    env
+
     ;;
   state )
     verify_auth<$AUTHFILE || auth_failed
@@ -170,7 +183,7 @@ case "$FORM_mode" in
     echo 1
     ;;
   * )
-    echo "X-Konnekte-Status: 400 Bad Request"
+    echo "Status: 400 Bad Request"
     echo
     ;;
 esac

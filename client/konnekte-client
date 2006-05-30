@@ -103,18 +103,13 @@ class ConnectionManager(object):
         status_code = response.status
         reason = response.reason
 
-        status_header = response.getheader("X-Konnekte-Status")
-        if status_header is not None:
-            status_code = int(status_header[:3])
-            reason = status_header[4:]
-
         if status_code != 200:
             raise RequestError, (status_code, reason)
         return result
 
     def is_valid(self):
         try:
-            return self.request("hello") == "olleh konnekte"
+            return self.request("hello").startswith("olleh konnekte")
         except ConnectionError:
             return False
         except RequestError:
@@ -232,7 +227,7 @@ class ConnectionManager(object):
                 if curdetail.Start is None:
                     curdetail.Start = when
             elif what == "PHYS_CONNECT":
-                cnxmatch = re.search("cnx:([a-z0-9_]+)", line)
+                cnxmatch = re.search("cnx:([a-z0-9_]*)", line)
                 curdetail.Connection = cnxmatch.group(1)
             elif what == "PHYS_DISCONNECT":
                 if curdetail.Start is not None:
@@ -276,7 +271,7 @@ class ConnectProgressWindow(ConnectProgressWindowBase):
     def update_once(self):
         if self.Manager.is_connected():
             self.close()
-            return
+            return False
 
         self.progress.setProgress(self.progress.progress()+10)
 
@@ -288,30 +283,27 @@ class ConnectProgressWindow(ConnectProgressWindowBase):
             self.textLog.setUpdatesEnabled(True)
             self.textLog.update()
             self.Log = new_log
-            if "DONE" in new_log:
-                qt.QMessageBox.warning(self,
-                        "Konnekte",
-                        self.tr("The connection failed. See the log for why."),
-                        qt.QMessageBox.Ok)
-                self.close()
-                return
+
+        return True
 
     def update(self):
+        continue_updates = True
         try:
-            self.update_once()
+            continue_updates = self.update_once()
         finally:
-            qt.QTimer.singleShot(1000, self.update)
+            if continue_updates:
+                qt.QTimer.singleShot(1000, self.update)
 
     def exec_loop(self):
         ConnectProgressWindowBase.exec_loop(self)
-        if not self.Manager.is_connected():
-            self.Manager.disconnect()
+        #if not self.Manager.is_connected():
+            #self.Manager.disconnect()
 
 class MainWindow(MainWindowBase):
     def __init__(self):
         MainWindowBase.__init__(self)
 
-        base_url = str(SETTINGS.readEntry("/konnekte/base_url", "http://sprite/cgi-bin/konnekte")[0])
+        base_url = str(SETTINGS.readEntry("/konnekte/base_url", "http://sprite/konnekte")[0])
         station = str(SETTINGS.readEntry("/konnekte/station")[0])
         password = str(SETTINGS.readEntry("/konnekte/password")[0])
         self.editStation.setText(station)
