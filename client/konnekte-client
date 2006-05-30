@@ -296,8 +296,8 @@ class ConnectProgressWindow(ConnectProgressWindowBase):
 
     def exec_loop(self):
         ConnectProgressWindowBase.exec_loop(self)
-        #if not self.Manager.is_connected():
-            #self.Manager.disconnect()
+        if not self.Manager.is_connected():
+            self.Manager.disconnect()
 
 class MainWindow(MainWindowBase):
     def __init__(self):
@@ -390,7 +390,8 @@ class MainWindow(MainWindowBase):
                 self.TrayIcon.setPixmap(self.SmallOffIcon)
             self.TrayIcon.update()
 
-            self.btnConnect.setEnabled(state.Code == UIState.DISCONNECTED)
+            self.btnConnect.setEnabled(state.Code == UIState.DISCONNECTED or 
+                    self.Manager.station not in state.HeldBy)
             self.btnDisconnect.setEnabled(state.Code == UIState.CONNECTED)
             self.actionDisconnect.setEnabled(state.Code == UIState.CONNECTED)
 
@@ -455,8 +456,7 @@ class MainWindow(MainWindowBase):
         cpw.exec_loop()
 
     def do_disconnect(self):
-        holders = self.State.HeldBy[:]
-        if holders != [self.Manager.station]:
+        if self.State.HeldBy != [self.Manager.station]:
             if qt.QMessageBox.information(self,
                     "Konnekte",
                     self.tr("Other stations are connected at present. Force disconnection?"),
