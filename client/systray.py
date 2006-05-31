@@ -19,7 +19,7 @@ class SystrayIcon(qt.QLabel):
         self.setBackgroundMode(qt.Qt.X11ParentRelative)
         #self.setBackgroundOrigin(qt.QWidget.WindowOrigin)
 
-        libX11 = c.cdll.LoadLibrary("libX11.so")
+        libX11 = c.cdll.LoadLibrary("libX11.so.6")
         # get all functions, set arguments + return types
         XDefaultScreenOfDisplay = libX11.XDefaultScreenOfDisplay
         XDefaultScreenOfDisplay.argtypes = [c.c_void_p]
@@ -67,9 +67,9 @@ class SystrayIcon(qt.QLabel):
         XSync = libX11.XSync
         XSync.argtypes = [c.c_void_p, c.c_int]
 
-        dpy = int(qt.qt_xdisplay())
+        dpy = c.c_void_p(int(qt.qt_xdisplay()))
 
-        iscreen = XScreenNumberOfScreen(XDefaultScreenOfDisplay(dpy))
+        iscreen = XScreenNumberOfScreen(c.c_void_p(XDefaultScreenOfDisplay(dpy)))
         # get systray window (holds _NET_SYSTEM_TRAY_S<screen> atom)
         selectionAtom = XInternAtom(dpy, "_NET_SYSTEM_TRAY_S%i" % iscreen, 0)
         XGrabServer(dpy)
@@ -95,7 +95,7 @@ class SystrayIcon(qt.QLabel):
                                      XInternAtom(dpy, "_NET_SYSTEM_TRAY_OPCODE", 0), # message type
                                      32, # format
                                      k) # message data
-            XSendEvent(dpy, managerWin, 0, 0, c.addressof(ev))
+            XSendEvent(dpy, managerWin, 0, 0, c.c_void_p(c.addressof(ev)))
             XSync(dpy, 0)
         
         self.show()
