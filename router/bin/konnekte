@@ -81,6 +81,8 @@ phys_connect()
   rm "$PPP_LOGFILE"
   PHONE_NUMBER="$phone" USER="$user" PASSWORD="$pwd" \
   LOG="$PPP_LOGFILE" $CONNECT_SCRIPT
+
+  echo 0x20 > /proc/sys/diag
 }
 
 phys_disconnect()
@@ -91,6 +93,7 @@ phys_disconnect()
   rm -f $STARTTIMEFILE
 
   killall pppd
+  echo 0x00 > /proc/sys/diag
 }
 
 connect()
