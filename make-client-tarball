@@ -1,2 +1,2 @@
 #! /bin/sh
-tar cvfz konnekte.tar.gz client/*.py client/konnekte-client client/images/main.png client/*desktop
+tar cvfz konnekte-client.tar.gz client/*.py client/images/main.png client/*desktop

@@ -1,0 +1,6 @@
+#! /bin/sh
+/usr/sbin/pppd /dev/usb/tts/0 115200 \
+  debug noauth crtscts nolock usepeerdns defaultroute \
+  connect '/usr/sbin/chat -s -v -E -f /root/konnekte/ppp/chat-script' \
+  user "$USER" password "$PASSWORD" \
+  logfile "$LOG"

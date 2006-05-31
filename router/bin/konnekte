@@ -13,7 +13,7 @@ STARTTIMEFILE=$STATEDIR/konnekte-connstarttime
 AUTHFILE=$CONFIGDIR/credentials
 LOGFILE=$LOGDIR/log
 PPP_LOGFILE=/tmp/ppp-log
-CONNECT_SCRIPT=/root/ppp/connect
+CONNECT_SCRIPT=$ROOTDIR/ppp/connect
 
 PROTOVERSION=1
 
