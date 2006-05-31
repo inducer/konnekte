@@ -54,7 +54,7 @@
     <name>ConnectProgressWindow</name>
     <message>
         <source>The connection failed. See the log for why.</source>
-        <translation>Die Verbindung ist fehlgeschlagen.
+        <translation type="obsolete">Die Verbindung ist fehlgeschlagen.
 Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
     </message>
 </context>
@@ -155,19 +155,19 @@ Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
     <name>MainWindow</name>
     <message>
         <source>&amp;Hide Main Window</source>
-        <translation>Hauptfenster &amp;verstecken</translation>
+        <translation type="unfinished">Hauptfenster &amp;verstecken</translation>
     </message>
     <message>
         <source>Hide main window</source>
-        <translation>Hauptfenster verstecken</translation>
+        <translation type="unfinished">Hauptfenster verstecken</translation>
     </message>
     <message>
         <source>&amp;Show Main Window</source>
-        <translation>Hauptfenster &amp;zeigen</translation>
+        <translation type="unfinished">Hauptfenster &amp;zeigen</translation>
     </message>
     <message>
         <source>Show main window</source>
-        <translation>Hauptfenster zeigen</translation>
+        <translation type="unfinished">Hauptfenster zeigen</translation>
     </message>
     <message>
         <source>1 second</source>
@@ -191,35 +191,35 @@ Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
     </message>
     <message>
         <source>Other stations are connected at present. Force disconnection?</source>
-        <translation>Andere Stationen sind gegenwärtig verbunden. Trennung erzwingen?</translation>
+        <translation type="unfinished">Andere Stationen sind gegenwärtig verbunden. Trennung erzwingen?</translation>
     </message>
     <message>
         <source>Konnekte (C) Andreas Kloeckner 2006</source>
-        <translation>Konnekte (C) Andreas Klöckner 2006</translation>
+        <translation type="unfinished">Konnekte (C) Andreas Klöckner 2006</translation>
     </message>
     <message>
         <source>Cannot quit because there is still an active connection held.</source>
-        <translation>Kann Anwendung nicht verlassen, da diese Station eine Verbindung hält.</translation>
+        <translation type="unfinished">Kann Anwendung nicht verlassen, da diese Station eine Verbindung hält.</translation>
     </message>
     <message>
         <source>&amp;Disconnect</source>
-        <translation>&amp;Trennen</translation>
+        <translation type="unfinished">&amp;Trennen</translation>
     </message>
     <message>
         <source>None</source>
-        <translation>Kein</translation>
+        <translation type="unfinished">Kein</translation>
     </message>
     <message>
         <source>There was some trouble connecting to the gateway.</source>
-        <translation>Es gab Schwierigkeiten beim Verbinden zum Gateway.</translation>
+        <translation type="unfinished">Es gab Schwierigkeiten beim Verbinden zum Gateway.</translation>
     </message>
     <message>
         <source>The gateway did not accept the station/password combination.</source>
-        <translation>Das Gateway hat die Kombination aus Station und Passwort nicht akzeptiert.</translation>
+        <translation type="unfinished">Das Gateway hat die Kombination aus Station und Passwort nicht akzeptiert.</translation>
     </message>
     <message>
         <source>The gateway uses an incompatible protocol.</source>
-        <translation>Das Gateway benutzt ein inkompatibles Protokoll.</translation>
+        <translation type="unfinished">Das Gateway benutzt ein inkompatibles Protokoll.</translation>
     </message>
 </context>
 <context>
@@ -321,34 +321,34 @@ Das Protokoll enthält Hinweise darauf, was falsch lief.</translation>
     <name>dateformat</name>
     <message>
         <source>1 second</source>
-        <translation>1 Sekunde</translation>
+        <translation type="unfinished">1 Sekunde</translation>
     </message>
     <message>
         <source>%1 seconds</source>
-        <translation>%1 Sekunden</translation>
+        <translation type="unfinished">%1 Sekunden</translation>
     </message>
     <message>
         <source>1 minute %1 seconds</source>
-        <translation>1 Minute %1 Sekunden</translation>
+        <translation type="unfinished">1 Minute %1 Sekunden</translation>
     </message>
     <message>
         <source>%1 minutes %2 seconds</source>
-        <translation>%1 Minuten %2 Sekunden</translation>
+        <translation type="unfinished">%1 Minuten %2 Sekunden</translation>
     </message>
 </context>
 <context>
     <name>states</name>
     <message>
         <source>Error</source>
-        <translation>Fehler</translation>
+        <translation type="unfinished">Fehler</translation>
     </message>
     <message>
         <source>Disconnected</source>
-        <translation>Getrennt</translation>
+        <translation type="unfinished">Getrennt</translation>
     </message>
     <message>
         <source>Connected</source>
-        <translation>Verbunden</translation>
+        <translation type="unfinished">Verbunden</translation>
     </message>
 </context>
 </TS>

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Encoding=UTF-8
+Exec=konnekte
+TryExec=konnekte
+Icon=konnekte.png
+Categories=Network;Dialup
+Name=Konnekte
+GenericName=Internet Connection Manager
+GenericName[de]=Internet-Verbindungsmanager
+

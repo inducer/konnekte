@@ -148,12 +148,12 @@ class ConnectionManager(object):
             raise ValueError, "Invalid state: no state variable"
 
         if vars["state"] == "connected":
-            return UIState(UIState.CONNECTED,
+            return UIState(self, UIState.CONNECTED,
                     connection=vars["connection"],
                     duration=int(vars["now"])-int(vars["start"]),
                     heldby=vars["holders"].split())
         elif vars["state"] == "disconnected":
-            return UIState(UIState.DISCONNECTED)
+            return UIState(self, UIState.DISCONNECTED)
         else:
             raise ValueError, "Invalid state: invalid state variable"
 
@@ -245,7 +245,8 @@ class UIState(object):
     DISCONNECTED = 2
     CONNECTED = 3
 
-    def __init__(self, code, textual=None, connection=None, duration=None, heldby=None):
+    def __init__(self, mgr, code, textual=None, connection=None, duration=None, heldby=None):
+        self.Manager = mgr
         self.Code = code
         self.Textual = textual
         self.Connection = connection
@@ -260,6 +261,9 @@ class UIState(object):
                     UIState.DISCONNECTED: app.translate("states", "Disconnected"),
                     UIState.CONNECTED: app.translate("states", "Connected")}[self.Code]
     text = property(_text)
+
+    def are_we_holding_a_connection(self):
+        return self.Code == UIState.CONNECTED and  self.Manager.station in self.HeldBy
 
 class ConnectProgressWindow(ConnectProgressWindowBase):
     def __init__(self, parent, manager):
@@ -390,13 +394,12 @@ class MainWindow(MainWindowBase):
                 self.TrayIcon.setPixmap(self.SmallOffIcon)
             self.TrayIcon.update()
 
-            self.btnConnect.setEnabled(state.Code == UIState.DISCONNECTED or 
-                    self.Manager.station not in state.HeldBy)
+            self.btnConnect.setEnabled(not state.are_we_holding_a_connection())
             self.btnDisconnect.setEnabled(state.Code == UIState.CONNECTED)
             self.actionDisconnect.setEnabled(state.Code == UIState.CONNECTED)
 
-            self.editStation.setEnabled(state.Code != UIState.CONNECTED)
-            self.editPassword.setEnabled(state.Code != UIState.CONNECTED)
+            self.editStation.setEnabled(not state.are_we_holding_a_connection())
+            self.editPassword.setEnabled(not state.are_we_holding_a_connection())
             self.btnViewLog.setEnabled(state.Code != UIState.DISABLED)
 
         def examine_and_change(attrname, widget, format_func=lambda x: x):
@@ -420,9 +423,9 @@ class MainWindow(MainWindowBase):
         try:
             self.set_state(self.Manager.get_state())
         except RequestError, e:
-            self.set_state(UIState(UIState.DISABLED, self.diagnose_failure()))
+            self.set_state(UIState(self.Manager, UIState.DISABLED, self.diagnose_failure()))
         except ConnectionError, e:
-            self.set_state(UIState(UIState.DISABLED, self.diagnose_failure()))
+            self.set_state(UIState(self.Manager, UIState.DISABLED, self.diagnose_failure()))
 
     def update_state(self):
         try:
@@ -431,6 +434,11 @@ class MainWindow(MainWindowBase):
             qt.QTimer.singleShot(1000, self.update_state)
 
     def do_connect(self):
+        if self.State.Code == UIState.CONNECTED:
+            if not self.State.are_we_holding_a_connection():
+                self.Manager.connect("tagalong")
+            return
+
         connections = self.Manager.get_connections()
         conn_names = list(connections.keys())
         conn_names.sort()
@@ -456,7 +464,10 @@ class MainWindow(MainWindowBase):
         cpw.exec_loop()
 
     def do_disconnect(self):
-        if self.State.HeldBy != [self.Manager.station]:
+        if self.State.are_we_holding_a_connection():
+            self.Manager.disconnect()
+            self.update_state_once()
+        elif self.State.Code == UIState.CONNECTED:
             if qt.QMessageBox.information(self,
                     "Konnekte",
                     self.tr("Other stations are connected at present. Force disconnection?"),
@@ -464,9 +475,6 @@ class MainWindow(MainWindowBase):
                     qt.QMessageBox.No) == qt.QMessageBox.Yes:
                 self.Manager.force_disconnect()
                 self.update_state_once()
-        else:
-            self.Manager.disconnect()
-            self.update_state_once()
 
     def view_log(self):
         from ui_logwindow import LogWindow
@@ -526,8 +534,7 @@ class MainWindow(MainWindowBase):
                 qt.QMessageBox.Ok)
         
     def closeEvent(self, ev):
-        if self.State.Code == UIState.CONNECTED and \
-                self.Manager.station in self.State.HeldBy:
+        if self.State.are_we_holding_a_connection():
             qt.QMessageBox.information(self,
                     "Konnekte",
                     self.tr("Cannot quit because there is still an active connection held."),
@@ -546,7 +553,6 @@ class MainWindow(MainWindowBase):
 app = qt.QApplication(sys.argv)
 
 trans = qt.QTranslator(None)
-#trans.load(qt.QString(
 qmfile = get_file("konnekte_%s.qm" % str(qt.QTextCodec.locale()[:2]))
 trans.load(qmfile, len(qmfile))
 app.installTranslator(trans)

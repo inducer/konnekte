@@ -1,4 +1,4 @@
-SOURCES         = konnekte-client \
+SOURCES         = konnekte-client.py \
   ui_mainwindow.py \
   ui_connectwindow.py \
   ui_logwindow.py \

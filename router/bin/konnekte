@@ -138,7 +138,7 @@ case "$FORM_mode" in
     if is_connected && test -f $HOLDERSFILE; then
       echo "state: connected"
       echo "connection: `cat $CONNECTIONFILE`"
-      echo "holders: `cat $HOLDERSFILE`"
+      echo "holders: "`cat $HOLDERSFILE`
       echo "start: `cat $STARTTIMEFILE`"
       echo "now: `date +%s`"
     else
