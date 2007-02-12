@@ -1,0 +1,3 @@
+*.qm
+ui_*.py
+binary_data.py
